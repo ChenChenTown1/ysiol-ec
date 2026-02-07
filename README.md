@@ -6,3 +6,8 @@
 
 ## 使用方式:
     curl -s https://raw.githubusercontent.com/ChenChenTown1/ysiol-ec/refs/heads/main/fix_srt.py | python3 -
+
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=ChenChenTown1/ysiol-ec&type=date&legend=top-left)](https://www.star-history.com/#ChenChenTown1/ysiol-ec&type=date&legend=top-left)
