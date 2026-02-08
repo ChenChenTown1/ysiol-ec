@@ -1,35 +1,33 @@
 #!/usr/bin/env python3
-import os, sys, glob
+import os, sys
 
-for srt in glob.glob("**/*.srt", recursive=True):
-    try:
-        with open(srt, "rb") as f:
-            content = f.read().decode("utf-8", errors="ignore")
-        
-        lines = [l.strip() for l in content.replace("\r", "").split("\n")]
-        blocks, block = [], []
-        for line in lines:
-            if not line and block:
-                blocks.append(block)
-                block = []
-            elif line:
-                block.append(line)
-        if block: blocks.append(block)
-        
-        subs = []
-        for b in blocks:
-            if len(b) > 2 and b[0].isdigit() and "-->" in b[1]:
-                s, e = b[1].split("-->", 1)
-                subs.append([s.strip(), e.strip(), " ".join(b[2:])])
-        
-        for i in range(len(subs)-1):
-            subs[i][1] = subs[i+1][0]
-        
-        out = srt.replace(".srt", "_fixed.srt")
-        with open(out, "w", encoding="utf-8") as f:
-            for n, (st, ed, txt) in enumerate(subs, 1):
-                f.write(f"{n}\n{st} --> {ed}\n{txt}\n\n")
-        
-        print(f"✓ {srt} -> {len(subs)} lines")
-    except:
-        print(f"✗ {srt}")
+for root, dirs, files in os.walk('.'):
+    for file in files:
+        if file.endswith('.srt') and not file.endswith('_fixed.srt'):
+            srt_path = os.path.join(root, file)
+            out_path = os.path.join(root, file.replace('.srt', '_fixed.srt'))
+            
+            try:
+                with open(srt_path, 'rb') as f:
+                    text = f.read().decode('utf-8', errors='ignore')
+                
+                text = text.replace('\r\n', '\n').replace('\r', '\n')
+                blocks = [b for b in text.split('\n\n') if b.strip()]
+                subs = []
+                
+                for b in blocks:
+                    lines = [l.strip() for l in b.split('\n') if l.strip()]
+                    if len(lines) >= 3 and lines[0].isdigit() and '-->' in lines[1]:
+                        start, end = lines[1].split('-->', 1)
+                        subs.append([start.strip(), end.strip(), ' '.join(lines[2:])])
+                
+                for i in range(len(subs)-1):
+                    subs[i][1] = subs[i+1][0]
+                
+                with open(out_path, 'w', encoding='utf-8') as f:
+                    for idx, (start, end, txt) in enumerate(subs, 1):
+                        f.write(f'{idx}\n{start} --> {end}\n{txt}\n\n')
+                
+                print(f'Fixed: {srt_path} -> {len(subs)} subtitles')
+            except Exception as e:
+                print(f'Error: {srt_path}: {e}')
