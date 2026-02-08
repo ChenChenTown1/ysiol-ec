@@ -5,18 +5,22 @@ import argparse
 from pathlib import Path
 from difflib import SequenceMatcher
 
-def find_mp4_for_srt(srt_file):
+def find_best_mp4_for_srt(srt_file, all_mp4_files):
     srt_path = Path(srt_file)
     srt_name = srt_path.stem.replace('_fixed', '')
     
-    for mp4 in srt_path.parent.glob('*.mp4'):
+    best_match = None
+    best_score = 0
+    
+    for mp4 in all_mp4_files:
         mp4_name = mp4.stem
         score = SequenceMatcher(None, srt_name.lower(), mp4_name.lower()).ratio()
-        if srt_name.lower() in mp4_name.lower():
-            score += 0.2
-        if score > 0.3:
-            return mp4
-    return None
+        
+        if score > best_score:
+            best_score = score
+            best_match = mp4
+    
+    return best_match if best_score > 0.1 else None
 
 def add_subtitles(mp4_file, srt_file, output_dir=None):
     mp4_path = Path(mp4_file)
@@ -28,7 +32,6 @@ def add_subtitles(mp4_file, srt_file, output_dir=None):
         out_path = mp4_path.parent / f"{mp4_path.stem}_hardsub.mp4"
     
     if out_path.exists():
-        print(f"Skip: {out_path.name} exists")
         return False
     
     style = "FontName=SourceHanSansCN-Bold,FontSize=15,PrimaryColour=&H00FFFFFF,OutlineColour=&H66000000,BorderStyle=3"
@@ -63,27 +66,30 @@ def main():
     
     args = parser.parse_args()
     
-    srt_files = []
     path = Path(args.dir)
     
     if args.r:
+        mp4_files = list(path.rglob('*.mp4')) + list(path.rglob('*.MP4'))
         srt_files = list(path.rglob('*_fixed.srt')) + list(path.rglob('*_fixed.SRT'))
     else:
+        mp4_files = list(path.glob('*.mp4')) + list(path.glob('*.MP4'))
         srt_files = list(path.glob('*_fixed.srt')) + list(path.glob('*_fixed.SRT'))
+    
+    print(f"MP4: {len(mp4_files)}, SRT: {len(srt_files)}")
     
     ok = 0
     fail = 0
     
     for srt in srt_files:
-        mp4 = find_mp4_for_srt(srt)
-        if not mp4:
-            print(f"No MP4 for {srt.name}")
+        best_mp4 = find_best_mp4_for_srt(srt, mp4_files)
+        if not best_mp4:
+            print(f"No match: {srt.name}")
             fail += 1
             continue
         
-        print(f"\n{srt.name} -> {mp4.name}")
+        print(f"\n{srt.name} -> {best_mp4.name}")
         
-        if add_subtitles(mp4, srt, args.o):
+        if add_subtitles(best_mp4, srt, args.o):
             ok += 1
         else:
             fail += 1
