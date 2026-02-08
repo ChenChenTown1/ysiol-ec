@@ -3,6 +3,7 @@
 import subprocess
 import argparse
 import re
+import sys
 from pathlib import Path
 
 def get_main_part(filename):
@@ -79,12 +80,21 @@ def add_subtitles(mp4_file, srt_file, output_dir=None):
     mp4_path = Path(mp4_file)
     srt_path = Path(srt_file)
     
+    if not mp4_path.exists():
+        print(f"  MP4 file does not exist: {mp4_path}")
+        return False
+    
+    if not srt_path.exists():
+        print(f"  SRT file does not exist: {srt_path}")
+        return False
+    
     if output_dir:
         out_path = Path(output_dir) / f"{mp4_path.stem}_hardsub.mp4"
     else:
         out_path = mp4_path.parent / f"{mp4_path.stem}_hardsub.mp4"
     
     if out_path.exists():
+        print(f"  Output already exists: {out_path}")
         return False
     
     style = "FontName=SourceHanSansCN-Bold,FontSize=15,PrimaryColour=&H00FFFFFF,OutlineColour=&H66000000,BorderStyle=3"
@@ -100,10 +110,25 @@ def add_subtitles(mp4_file, srt_file, output_dir=None):
         str(out_path)
     ]
     
+    print(f"  Running: {' '.join(cmd[:6])}...")
+    
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        return result.returncode == 0
-    except:
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+        
+        if result.returncode == 0:
+            print(f"  Success: {out_path.name}")
+            return True
+        else:
+            print(f"  Failed with code: {result.returncode}")
+            if result.stderr:
+                error_lines = result.stderr.split('\n')
+                for line in error_lines[-10:]:
+                    if line.strip():
+                        print(f"    {line}")
+            return False
+            
+    except Exception as e:
+        print(f"  Exception: {e}")
         return False
 
 def main():
@@ -125,7 +150,13 @@ def main():
     
     mp4_files = get_real_mp4_files(all_mp4_files)
     
-    print(f"MP4: {len(mp4_files)}, SRT: {len(srt_files)}")
+    print(f"MP4 files: {len(mp4_files)}")
+    print(f"SRT files: {len(srt_files)}")
+    
+    if mp4_files:
+        print("\nMP4 files found:")
+        for mp4 in mp4_files:
+            print(f"  - {mp4.name}")
     
     processed_mp4s = set()
     ok = 0
@@ -142,18 +173,18 @@ def main():
             continue
         
         if best_mp4 in processed_mp4s:
+            print(f"\nSkipping {srt.name} - MP4 already processed")
             continue
         
         print(f"\n{srt.name}")
         print(f"-> {best_mp4.name}")
+        print(f"Main part: '{srt_main}'")
         
         if add_subtitles(best_mp4, srt, args.o):
             processed_mp4s.add(best_mp4)
             ok += 1
-            print("OK")
         else:
             fail += 1
-            print("Fail")
     
     print(f"\nDone: {ok} OK, {fail} Fail")
 
