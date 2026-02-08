@@ -1,56 +1,53 @@
 #!/usr/bin/env python3
 import os, subprocess, glob
 
-def embed_subtitle(video, srt):
-    video_base = os.path.splitext(video)[0]
-    output = f"{video_base}_subtitled.mp4"
+def embed_all():
+    mp4_files = glob.glob('**/*.mp4', recursive=True)
+    srt_files = glob.glob('**/*_fixed.srt', recursive=True)
     
-    cmd = [
-        'ffmpeg', '-i', video,
-        '-vf', f"subtitles={srt}:force_style='Alignment=2,Fontsize=24,MarginV=40'",
-        '-c:a', 'copy', '-y', output
-    ]
+    if not mp4_files:
+        print('No MP4 files found')
+        return
     
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        print(f'Success: {os.path.basename(video)} -> {os.path.basename(output)}')
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f'Failed: {os.path.basename(video)} - {e.stderr[:200]}')
-        return False
-
-def main():
-    fixed_srts = glob.glob('**/*_fixed.srt', recursive=True)
-    
-    if not fixed_srts:
+    if not srt_files:
         print('No _fixed.srt files found')
         return
     
-    print(f'Found {len(fixed_srts)} _fixed.srt files')
+    print(f'Found {len(mp4_files)} MP4 files, {len(srt_files)} SRT files\n')
     
     success = 0
-    for srt in fixed_srts:
-        srt_name = os.path.basename(srt).replace('_fixed.srt', '')
-        srt_dir = os.path.dirname(srt)
+    for mp4 in mp4_files:
+        mp4_name = os.path.basename(mp4).replace('.mp4', '').lower()
         
-        videos = glob.glob(os.path.join(srt_dir, '*.mp4')) + glob.glob(os.path.join(srt_dir, '*.MP4'))
-        
-        matched = False
-        for video in videos:
-            video_name = os.path.basename(video).lower()
-            srt_base = srt_name.lower()
-            
-            if srt_base in video_name or video_name.replace('.mp4', '') in srt_base:
-                print(f'Matching: {os.path.basename(srt)} -> {os.path.basename(video)}')
-                if embed_subtitle(video, srt):
-                    success += 1
-                matched = True
+        matching_srt = None
+        for srt in srt_files:
+            srt_name = os.path.basename(srt).replace('_fixed.srt', '').lower()
+            if mp4_name in srt_name or srt_name in mp4_name:
+                matching_srt = srt
                 break
         
-        if not matched:
-            print(f'No MP4 match for: {os.path.basename(srt)}')
+        if matching_srt:
+            output = mp4.replace('.mp4', '_subtitled.mp4')
+            
+            cmd = [
+                'ffmpeg', '-i', mp4,
+                '-vf', f"subtitles='{matching_srt}':force_style='Alignment=2,Fontsize=24,MarginV=40'",
+                '-c:a', 'copy', '-y', output
+            ]
+            
+            print(f'Processing: {os.path.basename(mp4)}')
+            
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f'Success: {os.path.basename(output)}\n')
+                    success += 1
+                else:
+                    print(f'Failed\n')
+            except:
+                print(f'Error\n')
     
-    print(f'Completed: {success}/{len(fixed_srts)}')
+    print(f'Completed: {success}/{len(mp4_files)}')
 
 if __name__ == '__main__':
-    main()
+    embed_all()
