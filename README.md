@@ -12,11 +12,14 @@ stands for: youtube auto generated subs paraphraser for ffmpeg
 ## 使用方式:
 无需下载
 ##### 1.先cd到需要处理的文件夹
-##### 2.执行此命令:
+##### 2.执行此命令来处理.srt文件:
     curl -s https://raw.githubusercontent.com/ChenChenTown1/ysiol-ec/refs/heads/main/fix_srt.py | python3 -
 
 ##### 3.等待处理完毕, 带有_fixed是处理完的
-##### 4.用另一个python脚本进行合成
+##### 4.用这个脚本进行合成(它会把名字最像的和带有_fixed的文件用ffmpeg合成):
+    curl -s https://raw.githubusercontent.com/ChenChenTown1/ytags-p-ff/refs/heads/main/embed_subs.py | python3 -
+
+
 
 ## Star History
 
