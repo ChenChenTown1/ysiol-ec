@@ -12,11 +12,12 @@ ffmpeg 都行 (我用的是8.0.1)
 
 ## 使用方式:
 无需下载
-1.先cd到需要处理的文件夹
-2.执行此命令:
+### 1.先cd到需要处理的文件夹
+### 2.执行此命令:
     curl -s https://raw.githubusercontent.com/ChenChenTown1/ysiol-ec/refs/heads/main/fix_srt.py | python3 -
-3.等待处理完毕, 带有_fixed是处理完的
-4.用另一个python脚本进行合成
+
+### 3.等待处理完毕, 带有_fixed是处理完的
+### 4.用另一个python脚本进行合成
 
 ## Star History
 
