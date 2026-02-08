@@ -4,69 +4,73 @@ import subprocess
 import argparse
 import re
 from pathlib import Path
-from difflib import SequenceMatcher
 
-def extract_main_title(filename):
+def get_main_part(filename):
     name = str(filename)
     
+    if '｜' in name:
+        main_part = name.split('｜')[0].strip()
+    elif '|' in name:
+        main_part = name.split('|')[0].strip()
+    else:
+        main_part = name
+    
     patterns_to_remove = [
-        r'\[[^\]]+\]',  # 移除YouTube ID
-        r'\.en_fixed',  # 移除后缀
+        r'\[[^\]]+\]',  # YouTube ID
+        r'\.en_fixed',
         r'\.zh_fixed',
+        r'_fixed',
         r'\.en',
         r'\.zh',
-        r'_fixed',
         r'\.srt$',
         r'\.mp4$',
         r'\.MP4$',
+        r'\s+',
     ]
     
     for pattern in patterns_to_remove:
-        name = re.sub(pattern, '', name)
+        main_part = re.sub(pattern, '', main_part)
     
-    return name.strip()
-
-def get_common_words(text):
-    words = re.findall(r'\b\w+\b', text.lower())
-    common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'has', 'have', 'had', 'do', 'does', 'did', 'will', 'would', 'shall', 'should', 'may', 'might', 'must', 'can', 'could', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their', 'mine', 'yours', 'hers', 'ours', 'theirs'}
-    return [word for word in words if word not in common_words and len(word) > 2]
-
-def calculate_similarity(text1, text2):
-    text1_clean = extract_main_title(text1)
-    text2_clean = extract_main_title(text2)
+    main_part = main_part.replace('The Henry Ford\'s Innovation Nation', '')
+    main_part = main_part.replace('The Henry Ford’s Innovation Nation', '')
+    main_part = main_part.replace('The Henry Fords Innovation Nation', '')
+    main_part = main_part.replace('Innovation Nation', '')
+    main_part = main_part.replace('Henry Ford', '')
     
-    words1 = get_common_words(text1_clean)
-    words2 = get_common_words(text2_clean)
-    
-    if not words1 or not words2:
-        return 0
-    
-    common_count = len(set(words1) & set(words2))
-    total_unique = len(set(words1) | set(words2))
-    
-    if total_unique == 0:
-        return 0
-    
-    word_similarity = common_count / total_unique
-    
-    sequence_similarity = SequenceMatcher(None, text1_clean.lower(), text2_clean.lower()).ratio()
-    
-    return max(word_similarity, sequence_similarity)
+    return main_part.strip()
 
 def find_best_mp4_for_srt(srt_file, all_mp4_files):
     srt_path = Path(srt_file)
+    srt_main = get_main_part(srt_path.name)
+    
+    if not srt_main:
+        return None
     
     best_match = None
     best_score = 0
     
     for mp4 in all_mp4_files:
-        score = calculate_similarity(srt_path.name, mp4.name)
+        mp4_main = get_main_part(mp4.name)
+        
+        if not mp4_main:
+            continue
+        
+        score = 0
+        
+        if srt_main.lower() == mp4_main.lower():
+            score = 1.0
+        elif srt_main.lower() in mp4_main.lower():
+            score = 0.8
+        elif mp4_main.lower() in srt_main.lower():
+            score = 0.8
+        elif srt_main.lower()[:20] == mp4_main.lower()[:20]:
+            score = 0.6
         
         if score > best_score:
             best_score = score
             best_match = mp4
     
-    if best_score < 0.3:
+    if best_score < 0.5:
         return None
     
     return best_match
@@ -84,7 +88,6 @@ def add_subtitles(mp4_file, srt_file, output_dir=None):
         out_path = mp4_path.parent / f"{mp4_path.stem}_hardsub.mp4"
     
     if out_path.exists():
-        print("  Skip: exists")
         return False
     
     style = "FontName=SourceHanSansCN-Bold,FontSize=15,PrimaryColour=&H00FFFFFF,OutlineColour=&H66000000,BorderStyle=3"
@@ -103,10 +106,8 @@ def add_subtitles(mp4_file, srt_file, output_dir=None):
     try:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode == 0:
-            print("  Success")
             return True
         else:
-            print("  Failed")
             return False
     except:
         return False
@@ -133,31 +134,41 @@ def main():
     print(f"MP4: {len(mp4_files)}, SRT: {len(srt_files)}")
     
     if mp4_files:
-        print("MP4 files:")
+        print("MP4 files found:")
         for mp4 in mp4_files:
-            clean = extract_main_title(mp4.name)
+            clean = get_main_part(mp4.name)
             print(f"  - {mp4.name}")
-            print(f"    Clean: {clean}")
+            if clean:
+                print(f"    Main: '{clean}'")
     
     ok = 0
     fail = 0
     
     for srt in srt_files:
+        srt_main = get_main_part(srt.name)
         print(f"\n{srt.name}")
-        print(f"Clean: {extract_main_title(srt.name)}")
+        print(f"Main: '{srt_main}'")
         
-        best_mp4 = find_best_mp4_for_srt(srt, mp4_files)
-        if not best_mp4:
-            print("No match")
+        if not srt_main:
+            print("No main title extracted")
             fail += 1
             continue
         
-        score = calculate_similarity(srt.name, best_mp4.name)
-        print(f"Match: {best_mp4.name} (score: {score:.2f})")
+        best_mp4 = find_best_mp4_for_srt(srt, mp4_files)
+        if not best_mp4:
+            print("No match found")
+            fail += 1
+            continue
+        
+        mp4_main = get_main_part(best_mp4.name)
+        print(f"Match: {best_mp4.name}")
+        print(f"MP4 Main: '{mp4_main}'")
         
         if add_subtitles(best_mp4, srt, args.o):
+            print("Success")
             ok += 1
         else:
+            print("Failed")
             fail += 1
     
     print(f"\nDone: {ok} OK, {fail} Fail")
