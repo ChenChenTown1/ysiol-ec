@@ -1,4 +1,4 @@
-![icon](https://github.com/ChenChenTown1/ytags-p-ff/blob/main/image/icon.png?raw=true)
+![logo](https://github.com/ChenChenTown1/ytags-p-ff/blob/main/image/icon.png?raw=true)
 # ytags-p-ff
 stands for: youtube auto generated subs paraphraser for ffmpeg
 ### 记得star, 支持下
