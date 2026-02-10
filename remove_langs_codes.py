@@ -1,7 +1,7 @@
+#!/usr/bin/env python3
 import os
-import sys
 
-LANGUAGE_EXTENSIONS = [
+EXTENSIONS = [
     ".ab", ".aa", ".af", ".ak", ".sq", ".am", ".ar", ".hy", ".as", ".ay",
     ".az", ".bn", ".ba", ".eu", ".be", ".bho", ".bs", ".br", ".bg", ".my",
     ".ca", ".ceb", ".zh-Hans", ".zh-Hant", ".co", ".hr", ".cs", ".da", ".dv",
@@ -20,64 +20,12 @@ LANGUAGE_EXTENSIONS = [
     ".war", ".cy", ".fy", ".wo", ".xh", ".yi", ".yo", ".zu"
 ]
 
-def process_current_directory():
-    current_dir = os.getcwd()
-    
-    if not os.path.isdir(current_dir):
-        print(f"Error: Current directory '{current_dir}' is invalid")
-        return
-    
-    sorted_extensions = sorted(LANGUAGE_EXTENSIONS, key=len, reverse=True)
-    processed_files = 0
-    renamed_files = 0
-    
-    for filename in os.listdir(current_dir):
-        try:
-            file_path = os.path.join(current_dir, filename)
-            
-            if not os.path.isfile(file_path):
-                continue
-            
-            processed_files += 1
-            current_name = filename
-            
-            for extension in sorted_extensions:
-                if current_name.lower().endswith(extension.lower()):
-                    actual_extension = current_name[-len(extension):]
-                    new_name = current_name[:-len(actual_extension)]
-                    new_file_path = os.path.join(current_dir, new_name)
-                    
-                    if os.path.exists(new_file_path):
-                        print(f"Skip: '{current_name}' -> '{new_name}' (target exists)")
-                        break
-                    
-                    try:
-                        os.rename(file_path, new_file_path)
-                        print(f"Done: '{current_name}' -> '{new_name}'")
-                        renamed_files += 1
-                        current_name = new_name
-                        break
-                    except Exception as error:
-                        print(f"Error: Failed to rename '{current_name}': {error}")
-                        break
-        except Exception as error:
-            print(f"Error processing file '{filename}': {error}")
-    
-    print(f"\nResult:")
-    print(f"Total files: {processed_files}")
-    print(f"Renamed files: {renamed_files}")
-
-def main():
-    print("Current directory:", os.getcwd())
-    print("Will remove language extensions from all files")
-    
-    user_input = input("\nStart? (y/n): ").strip().lower()
-    
-    if user_input == 'y' or user_input == 'yes':
-        print("\nProcessing...\n")
-        process_current_directory()
-    else:
-        print("Cancelled")
-
-if __name__ == "__main__":
-    main()
+for filename in os.listdir('.'):
+    if os.path.isfile(filename):
+        for ext in sorted(EXTENSIONS, key=len, reverse=True):
+            if filename.lower().endswith(ext.lower()):
+                new_name = filename[:-len(ext)]
+                if not os.path.exists(new_name):
+                    os.rename(filename, new_name)
+                    print(f"{filename} -> {new_name}")
+                break
